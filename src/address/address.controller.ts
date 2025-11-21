@@ -6,7 +6,7 @@ import { ValidateAddressDto } from './dto/ validate-address.dto';
 export class AddressController {
   constructor(private readonly service: AddressService) {}
 
-  @Post('validate-address')
+  @Post('validate')
   async validate(@Body() dto: ValidateAddressDto) {
     return this.service.validate(dto.address);
   }
