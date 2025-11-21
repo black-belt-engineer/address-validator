@@ -48,14 +48,13 @@ Local parsers can misidentify components (house number, street, city), fail on t
 
 **Conclusion**: Skip the local parser entirely. Use Smarty's API directly — it handles parsing, standardization, and validation in one authoritative call. Simpler, more reliable, fewer moving parts.
 
-### Why Smarty, Not Custom Parsers or Libpostal?
+### Why Smarty Over Google Places or AWS Location?
 
-I rejected local parsers because they cannot verify if an address actually exists. **Libpostal** specifically has critical drawbacks:
-- Native C dependencies fail on Node 20+ and modern CI/CD systems
-- Only parses text structure; cannot validate deliverability
-- Still requires external verification afterward, adding unnecessary complexity
+- **Google Places**: Designed for geographic locations, not postal addresses. No deliverability checking.
+- **AWS Location**: Has geocoding but lacks USPS-level validation and address correction.
+- **Smarty**: Purpose-built for USPS-certified address validation. Handles typos, returns standardized USPS components (street, city, state, ZIP+4), and provides deliverability confirmation.
 
-**Solution**: Use Smarty directly. It handles both parsing and validation in one step, eliminating complexity.
+For US addresses, Smarty is the most accurate and reliable choice.
 
 ### Code Architecture
 
@@ -75,16 +74,6 @@ The modular architecture allows easy extensions:
 - **Add caching**: Reduce API calls without touching business logic
 - **Internationalize**: Add support for other regions by extending services
 - **Add rate limiting or logging**: Apply at controller or service level without refactoring
-
-
-### Why Smarty Over Google Places or AWS Location?
-
-- **Google Places**: Designed for geographic locations, not postal addresses. No deliverability checking.
-- **AWS Location**: Has geocoding but lacks USPS-level validation and address correction.
-- **Smarty**: Purpose-built for USPS-certified address validation. Handles typos, returns standardized USPS components (street, city, state, ZIP+4), and provides deliverability confirmation.
-
-For US addresses, Smarty is the most accurate and reliable choice.
-
 
 ---
 
