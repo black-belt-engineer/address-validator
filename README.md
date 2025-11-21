@@ -15,8 +15,7 @@ It accepts a free-form address string and returns a validation status: `VALID` (
 ## How to Run
 
 ### Prerequisites
-- Node.js 20+
-- npm
+- Docker
 
 ### Setup
 
@@ -24,7 +23,6 @@ It accepts a free-form address string and returns a validation status: `VALID` (
 ```bash
 git clone https://github.com/black-belt-engineer/address-validator
 cd address-validator
-npm install
 ```
 
 2. Create `.env`:
@@ -35,7 +33,7 @@ SMARTY_AUTH_TOKEN=your_auth_token
 
 3. Start:
 ```bash
-npm run start:dev
+docker compose up
 ```
 
 ---
