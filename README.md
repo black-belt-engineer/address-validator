@@ -1,84 +1,109 @@
 # Address Validator API
 
-This project is a backend API built with **NestJS** that validates and standardizes US property addresses. It exposes a single endpoint: **POST /validate-address**
+A backend service built with **NestJS** and **TypeScript** that validates and standardizes US property addresses via the **Smarty US Street API**.
 
-The API accepts a free-form address string and returns a structured, standardized address along with a validation status:
+The service exposes a single endpoint:
 
-- `VALID` – The address exists and is deliverable.
-- `CORRECTED` – The input had minor errors, and the API suggests a corrected address.
-- `UNVERIFIED` – The address could not be verified due to nonexistence or ambiguity.
-
-The service is designed to handle typos, partial addresses, and ambiguous inputs gracefully, providing clear feedback to clients. It is US-only by design to simplify validation logic and rely on the reliability of the Smarty US Street API.
-
-## Bootstrap & Usage
-
-1. Clone the repository:
-```bash
-git clone <repo-url>
-cd address-validator
+```
+POST /addresses/validate
 ```
 
-2. Install dependencies:  
+It accepts a free-form address string and returns a validation status: `VALID` (address is correct and deliverable), `CORRECTED` (input was auto-corrected), or `UNVERIFIED` (address cannot be confirmed).
+
+---
+
+## How to Run
+
+### Prerequisites
+- Node.js 20+
+- npm
+
+### Setup
+
+1. Clone and install:
 ```bash
+git clone https://github.com/black-belt-engineer/address-validator
+cd address-validator
 npm install
 ```
 
-3. Create a .env file in the root directory with your Smarty credentials:
-```bash
+2. Create `.env`:
+```env
 SMARTY_AUTH_ID=your_auth_id
 SMARTY_AUTH_TOKEN=your_auth_token
 ```
 
-4. Start the application:
+3. Start:
 ```bash
-SMARTY_AUTH_ID=your_auth_id
-SMARTY_AUTH_TOKEN=your_auth_token
+npm run start:dev
 ```
 
-## Architectural Thought Process
+---
 
-As the architect, the design choices were made with simplicity, maintainability, reliability, and future extensibility in mind:
+## Architectural Decisions
 
-### Smarty API as the sole validation source: 
-I removed local parsers like libpostal to avoid native dependencies and platform-specific installation issues. Smarty provides both parsing and validation, reducing the number of moving parts and ensuring consistent, authoritative results.
+Initially, I explored a two-tier approach: use a local parser (node-postal/libpostal) for quick parsing, then verify with Smarty. The logic seemed sound — parse fast locally, then validate externally. However, this approach had a critical flaw: **local parsing is inherently unreliable and cannot verify correctness**.
 
-### Modular Service Design:
-AddressController handles HTTP requests.
+Local parsers can misidentify components (house number, street, city), fail on typos, and cannot confirm if an address actually exists. This meant the parsed output was often inaccurate before even reaching Smarty. The extra complexity of a two-tier system added code, potential failure points, and maintenance burden without gaining reliability.
 
-AddressService orchestrates the overall validation workflow.
+**Conclusion**: Skip the local parser entirely. Use Smarty's API directly — it handles parsing, standardization, and validation in one authoritative call. Simpler, more reliable, fewer moving parts.
 
-AddressVerificationService contains the business logic to interact with Smarty and determine the status.
+### Why Smarty, Not Custom Parsers or Libpostal?
 
-SmartyClient encapsulates all external API calls and maps Smarty responses to our ParsedAddress interface.
+I rejected local parsers because they cannot verify if an address actually exists. **Libpostal** specifically has critical drawbacks:
+- Native C dependencies fail on Node 20+ and modern CI/CD systems
+- Only parses text structure; cannot validate deliverability
+- Still requires external verification afterward, adding unnecessary complexity
 
-This separation of concerns makes the code easy to maintain, test, and extend, such as switching providers or adding caching.
+**Solution**: Use Smarty directly. It handles both parsing and validation in one step, eliminating complexity.
 
-### Type Safety and Consistency:
+### Code Architecture
 
-Defined interfaces (ParsedAddress) and DTOs to enforce consistent data structures.
+Services follow clean separation of concerns:
 
-All methods have explicit return types, and any is avoided entirely.
+- **AddressController**: HTTP layer
+- **AddressService**: Orchestration and status determination
+- **AddressVerificationService**: Business logic for interpreting Smarty responses
+- **SmartyClient**: Isolated vendor integration (easy to swap providers in the future)
 
-This prevents runtime errors and makes the API predictable for clients.
+All methods have explicit return types. No `any` is used. DTOs enforce type safety.
 
-### Validation Status Design:
+### Why This Design is Future-Proof
 
-Three statuses (VALID, CORRECTED, UNVERIFIED) provide clear guidance to clients.
+The modular architecture allows easy extensions:
+- **Swap providers**: Change only `SmartyClient`
+- **Add caching**: Reduce API calls without touching business logic
+- **Internationalize**: Add support for other regions by extending services
+- **Add rate limiting or logging**: Apply at controller or service level without refactoring
 
-CORRECTED enables minor typo correction without blocking users.
 
-UNVERIFIED includes an optional reason for transparency.
+### Why Smarty Over Google Places or AWS Location?
 
-### Environment-based Configuration:
+- **Google Places**: Designed for geographic locations, not postal addresses. No deliverability checking.
+- **AWS Location**: Has geocoding but lacks USPS-level validation and address correction.
+- **Smarty**: Purpose-built for USPS-certified address validation. Handles typos, returns standardized USPS components (street, city, state, ZIP+4), and provides deliverability confirmation.
 
-Smarty credentials are loaded via .env using @nestjs/config.
+For US addresses, Smarty is the most accurate and reliable choice.
 
-This avoids hardcoding secrets and ensures the system is secure and configurable across environments.
 
-### Future-proofing and extensibility:
+---
 
-The architecture allows for easy replacement of Smarty with another provider.
+## AI Usage
 
-Adding international address support or caching repeated lookups can be done with minimal changes.
+AI was used as a brainstorming and acceleration tool
 
-Modular services make testing isolated components straightforward.
+- **Explored alternatives**: Evaluated two-tier parsing, libpostal, Smarty, Google, AWS approaches
+- **Evaluated trade-offs**: Compared providers based on features and accuracy
+- **Refined patterns**: Improved service structure based on suggestions
+- **Accelerated boilerplate**: Generated DTOs and interfaces
+
+
+---
+
+## Tech Stack
+
+- **NestJS**: Modular backend framework
+- **TypeScript**: Type safety
+- **Axios**: HTTP client
+- **@nestjs/config**: Environment management
+- **Smarty US Street API**: Address validation
